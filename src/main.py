@@ -3,6 +3,9 @@ import sys
 from config import Config
 from errors import ConfigError
 
+EXIT_OK = 0
+EXIT_ERROR = 1
+
 
 def main(argv=None):
     config = Config.from_args(argv)
@@ -11,8 +14,8 @@ def main(argv=None):
         config.validate()
     except ConfigError as err:
         print(err)
-        return 1
-    return 0
+        return EXIT_ERROR
+    return EXIT_OK
 
 
 if __name__ == "__main__":
