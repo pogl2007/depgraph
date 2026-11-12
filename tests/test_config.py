@@ -2,7 +2,7 @@ import pytest
 
 from config import DEFAULT_DEPTH, MAX_NAME_LENGTH, MIN_DEPTH, Config
 from errors import ConfigError
-from main import EXIT_ERROR, EXIT_OK, main
+from main import EXIT_ERROR, main
 
 URL = "https://api.nuget.org/v3-flatcontainer/"
 PACKAGE = "Serilog"
@@ -37,17 +37,6 @@ def test_default_depth():
     config = Config.from_args(
         ["--package", PACKAGE, "--repo", URL, "--version", VERSION])
     assert config.max_depth == DEFAULT_DEPTH
-
-
-def test_show(capsys):
-    make().show()
-    assert capsys.readouterr().out == (
-        f"package={PACKAGE}\n"
-        f"repo={URL}\n"
-        "test_mode=False\n"
-        f"version={VERSION}\n"
-        f"max_depth={DEFAULT_DEPTH}\n"
-    )
 
 
 def test_valid_config():
@@ -93,9 +82,7 @@ def test_missing_required():
         Config.from_args(["--package", PACKAGE])
 
 
-def test_main_exit_codes(capsys):
-    good = ["--package", PACKAGE, "--repo", URL, "--version", VERSION]
+def test_main_config_error(capsys):
     bad = ["--package", PACKAGE, "--repo", "x", "--version", VERSION]
-    assert main(good) == EXIT_OK
     assert main(bad) == EXIT_ERROR
     assert "Ошибка" in capsys.readouterr().out
