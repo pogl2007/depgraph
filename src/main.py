@@ -2,39 +2,43 @@ import sys
 
 from config import Config
 from errors import ConfigError, RepositoryError
+from graph import Graph, LocalRepository, NuGetSource
 from nuget import NuGetRepository
 
 EXIT_OK = 0
 EXIT_ERROR = 1
 
 
-def load_dependencies(config):
+def make_source(config):
     if config.test_mode:
-        raise RepositoryError(
-            "Ошибка: тестовый репозиторий будет поддержан на этапе 3")
-    repository = NuGetRepository(config.repo)
-    return repository.direct_dependencies(config.package, config.version)
+        return LocalRepository(config.repo)
+    return NuGetSource(NuGetRepository(config.repo))
 
 
-def print_dependencies(config, dependencies):
-    print(f"Прямые зависимости {config.package} {config.version}:")
-    if not dependencies:
-        print("  нет")
-        return
-    for dependency in dependencies:
-        print(f"  {dependency}")
-    print(f"Всего: {len(dependencies)}")
+def build_graph(config):
+    source = make_source(config)
+    root = source.start(config.package, config.version)
+    return Graph(source, config.max_depth).build(root)
+
+
+def print_graph(config, graph):
+    print(f"Граф зависимостей {graph.root} (глубина {config.max_depth}):")
+    for node, children in graph.edges.items():
+        print(f"  {node}: {', '.join(children) or 'нет'}")
+    print(f"Всего пакетов: {len(graph.edges)}")
+    for cycle in graph.cycles:
+        print(f"Циклическая зависимость: {' -> '.join(cycle)}")
 
 
 def main(argv=None):
     config = Config.from_args(argv)
     try:
         config.validate()
-        dependencies = load_dependencies(config)
+        graph = build_graph(config)
     except (ConfigError, RepositoryError) as err:
         print(err)
         return EXIT_ERROR
-    print_dependencies(config, dependencies)
+    print_graph(config, graph)
     return EXIT_OK
 
 

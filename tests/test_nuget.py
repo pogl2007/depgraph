@@ -99,32 +99,24 @@ def test_direct_dependencies(monkeypatch):
     assert [d.name for d in dependencies] == ["A.Lib", "B.Lib"]
 
 
-def test_main_prints_dependencies(monkeypatch, capsys):
-    monkeypatch.setattr(NuGetRepository, "download",
-                        staticmethod(lambda url: NUSPEC))
+def answer(url):
+    if url.endswith("/demo/1.0.0/demo.nuspec"):
+        return NUSPEC
+    return b"<package><metadata/></package>"
+
+
+def test_main_prints_graph(monkeypatch, capsys):
+    monkeypatch.setattr(NuGetRepository, "download", staticmethod(answer))
     code = main(["--package", "Demo", "--repo", URL, "--version", "1.0.0"])
     assert code == EXIT_OK
-    assert capsys.readouterr().out == (
-        "Прямые зависимости Demo 1.0.0:\n"
-        "  A.Lib [1.0, 2.0)\n"
-        "  B.Lib 2.0.0\n"
-        "Всего: 2\n"
-    )
+    out = capsys.readouterr().out
+    assert "  Demo 1.0.0: A.Lib 1.0.0, B.Lib 2.0.0\n" in out
+    assert "  A.Lib 1.0.0: нет\n" in out
 
 
-def test_main_no_dependencies(monkeypatch, capsys):
+def test_main_repository_error(monkeypatch, capsys):
     monkeypatch.setattr(NuGetRepository, "download",
-                        staticmethod(lambda url: OLD_NUSPEC.replace(
-                            b"<dependency id=\"Old.Lib\" version=\"1.2\" />",
-                            b"")))
-    main(["--package", "Old", "--repo", URL, "--version", "1.0"])
-    assert "  нет" in capsys.readouterr().out
-
-
-def test_main_test_mode_not_ready(tmp_path, capsys):
-    path = tmp_path / "graph.txt"
-    path.write_text("A: B\n", encoding="utf-8")
-    code = main(["--package", "A", "--repo", str(path),
-                 "--test-mode", "--version", "1.0"])
+                        staticmethod(lambda url: b"<broken"))
+    code = main(["--package", "Demo", "--repo", URL, "--version", "1.0.0"])
     assert code == EXIT_ERROR
-    assert "этапе 3" in capsys.readouterr().out
+    assert "неверный формат" in capsys.readouterr().out
