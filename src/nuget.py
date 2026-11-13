@@ -1,6 +1,6 @@
 import urllib.error
 import urllib.request
-import xml.etree.ElementTree as ElementTree
+import xml.etree.ElementTree as element_tree
 
 from errors import RepositoryError
 
@@ -51,8 +51,8 @@ def read_dependencies(element):
 
 def parse_dependencies(data):
     try:
-        root = ElementTree.fromstring(data)
-    except ElementTree.ParseError as err:
+        root = element_tree.fromstring(data)
+    except element_tree.ParseError as err:
         raise RepositoryError("Ошибка: неверный формат файла .nuspec") from err
     result = []
     for element in root.iter():
